@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:http/http.dart' as http;
+
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:responsive_table/responsive_table.dart';
-
+import 'package:http/http.dart' as http;
 import '../../utility/appConfig.dart';
 
 class PurchasesList extends StatefulWidget {
@@ -48,16 +49,12 @@ class _PurchasesListState extends State<PurchasesList> {
           {
             "seller": data["seller_tag"],
             "base": data["seller_db"]["part_name"],
-            "CVR": data["crv"],
-            "BIN": data["hidden_cc"],
+            "cc_no": data["hidden_cc"],
             "exp": "${data["exp_month"]}/${data["exp_year"]}",
-            "info": "Info",
-            "zip": data["zip"],
-            "state": data["state"],
-            "city": data["city"],
-            "country": data["country"],
-            "price": data["price"],
-            "buy" : data["id"]
+            "address": "${data["city"]}, ${data["state"]}, ${data["country"]}, ${data["zip"]}",
+            "buy-time": data["card_buy_time"],
+            "validation" : data["CC_STATUS"]["status"],
+            "ccinfo" : data
 
           }
       );
@@ -84,8 +81,13 @@ class _PurchasesListState extends State<PurchasesList> {
         "BIDENAUTH": AppConfig.API_KEY, // whatever headers you need(I add auth)
         "content-type": "application/json" // Specify content-type as JSON to prevent empty response body
       },
+      body: jsonEncode({
+        "cardstatus" : selectedDropdown,
+      })
     );
 
+    print("this is response ==== ${res.body}");
+    print("this is response ==== ${res.statusCode}");
     if(res.statusCode == 200){
       var data = jsonDecode(res.body)["results"];
       //print("data ==== $data");
@@ -154,11 +156,22 @@ class _PurchasesListState extends State<PurchasesList> {
     setState(() => _isLoading = false);
   }
 
+  Future? getCardPurList;
   bool isTabSingleTabb = false;
+
+
+
+  final List<String> bankDropdown = [
+    'OpenCards',
+    'ClosedCards',
+  ];
+  String? selectedDropdown;
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+    getCardPurList = _getCardData();
     _headers = [
       DatatableHeader(
           text: "Seller",
@@ -172,21 +185,14 @@ class _PurchasesListState extends State<PurchasesList> {
           text: "Base",
           value: "base",
           show: true,
-          flex: 6,
+          flex: 3,
           sortable: true,
           textAlign: TextAlign.left),
       DatatableHeader(
-          text: "CVR",
-          value: "CVR",
+          text: "CC No.",
+          value: "cc_no",
           show: true,
 
-          sortable: true,
-          textAlign: TextAlign.left),
-      DatatableHeader(
-          text: "BIN",
-          value: "BIN",
-          show: true,
-          flex: 2,
           sortable: true,
           textAlign: TextAlign.left),
       DatatableHeader(
@@ -196,40 +202,38 @@ class _PurchasesListState extends State<PurchasesList> {
           sortable: true,
           textAlign: TextAlign.left),
       DatatableHeader(
-          text: "Info",
-          value: "info",
+          text: "Address",
+          value: "address",
+          show: true,
+          flex: 3,
+          sortable: true,
+          textAlign: TextAlign.left),
+      DatatableHeader(
+          text: "Buy time ",
+          value: "buy-time",
           show: true,
           sortable: true,
           textAlign: TextAlign.left),
+      DatatableHeader(
+          text: "Validation",
+          value: "validation",
+          show: true,
+          sortable: true,
+          sourceBuilder: (value, row) {
+            return Container(
+              padding: EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(5)
+              ),
+              child: Text("$value"),
+            );
 
-      DatatableHeader(
-          text: "zip",
-          value: "zip",
-          show: true,
-          sortable: true,
-          textAlign: TextAlign.left),
-
-      DatatableHeader(
-          text: "City",
-          value: "city",
-          show: true,
-          sortable: true,
+          },
           textAlign: TextAlign.left),
       DatatableHeader(
-          text: "Country",
-          value: "country",
-          show: true,
-          sortable: true,
-          textAlign: TextAlign.left),
-      DatatableHeader(
-          text: "Price",
-          value: "price",
-          show: true,
-          sortable: true,
-          textAlign: TextAlign.left),
-      DatatableHeader(
-          text: "Buy",
-          value: "buy",
+          text: "Check CC Info",
+          value: "ccinfo",
           show: true,
           sortable: true,
           sourceBuilder: (value, row) {
@@ -237,109 +241,306 @@ class _PurchasesListState extends State<PurchasesList> {
               onPressed: (){
 
               },
-              child: Text("View CCN Details"),
+              child: Text("Check CC Info"),
             );
 
           },
           textAlign: TextAlign.left),
 
     ];
-    _initializeData();
   }
 
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: Column(
-        children: [
-          Container(
-            margin: EdgeInsets.all(20),
-            child: Table(
-              defaultColumnWidth: FixedColumnWidth(120.0),
-              border: TableBorder.all(
-                  color: Colors.black, style: BorderStyle.solid, width: 2),
-              children: [
-                TableRow(children: [
-                  Column(
-                    children: [
-                      Text(
-                        'Website',
-                        style: TextStyle(fontSize: 20.0),
+      //margin: EdgeInsets.all(10),
+      padding: EdgeInsets.all(20),
+      constraints: BoxConstraints(
+        maxHeight: 700,
+      ),
+      child:ResponsiveDatatable(
+        headerDecoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.7),
+        ),
+        headerTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600
+        ),
+        selectedDecoration: BoxDecoration(
+            color: Colors.grey.shade300
+        ),
+
+        title: TextButton.icon(
+          onPressed: () => {},
+          icon: Icon(Icons.search),
+          label: Row(
+            children: [
+              DropdownButtonHideUnderline(
+                child: DropdownButton2<String>(
+                  style: TextStyle(
+                      color: Colors.black
+                  ),
+                  isExpanded: true,
+                  hint: Text(
+                    'Card Status',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                  items: bankDropdown
+                      .map((String item) => DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
                       ),
-                    ],
+                    ),
+                  ))
+                      .toList(),
+                  value: selectedDropdown,
+                  onChanged: (String? value) {
+                    setState(() {
+                      selectedDropdown = value;
+                    });
+                  },
+                  buttonStyleData: const ButtonStyleData(
+                    padding: EdgeInsets.symmetric(horizontal: 5),
+                    height: 30,
+                    width: 140,
+                    // decoration: BoxDecoration(
+                    //   color: Colors.white,
+                    // )
                   ),
-                  Column(
-                    children: [
-                      Text(
-                        'Tutorial',
-                        style: TextStyle(fontSize: 20.0),
+                  menuItemStyleData:  MenuItemStyleData(
+                      height: 40,
+                      overlayColor: MaterialStatePropertyAll(Colors.black.withOpacity(0.4))
+                  ),
+                ),
+              ),
+
+              SizedBox(width: 10,),
+              InkWell(
+                onTap:(){
+                  _getCardData();
+                },
+                child: Container(
+                  width: 110,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    color: Colors.black,
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search, color: Colors.white, size: 18,),
+                        SizedBox(width: 5,),
+                        Text("Apply Filter",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        ),
+        reponseScreenSizes: [ScreenSize.xs],
+        actions: [
+          Row(
+            children: [
+              InkWell(
+                onTap:(){
+                },
+                child: Container(
+                  width: 100,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    color: Colors.black,
+                  ),
+                  child: Center(
+                    child: Text("Buy All",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
                       ),
-                    ],
+                    ),
                   ),
-                  Column(
-                    children: [
-                      Text(
-                        'Review',
-                        style: TextStyle(fontSize: 20.0),
-                      ),
-                    ],
+                ),
+              ),
+              SizedBox(width: 10,),
+              Container(
+                width: 100,
+                height: 30,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5),
+                  color: Colors.black,
+                ),
+                child: Center(
+                  child: Text("Filter",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
                   ),
-                ]),
-                TableRow(children: [
-                  Column(
-                    children: [
-                      Text('https://flutter.dev/'),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text('Flutter'),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text('5*'),
-                    ],
-                  ),
-                ]),
-                TableRow(children: [
-                  Column(
-                    children: [
-                      Text('https://dart.dev/'),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text('Dart'),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text('5*'),
-                    ],
-                  ),
-                ]),
-                TableRow(children: [
-                  Column(
-                    children: [
-                      Text('https://pub.dev/'),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text('Flutter Packages'),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text('5*'),
-                    ],
-                  ),
-                ]),
-              ],
-            ),
+                ),
+              )
+            ],
           ),
+        ],
+        headers: _headers,
+        source: _source,
+        selecteds: _selecteds,
+        showSelect: _showSelect,
+        autoHeight: false,
+        dropContainer: (data) {
+          print('_selecteds === ${_selecteds}');
+          return Center();
+          //return _DropDownContainer(data: data);
+        },
+        onChangedRow: (value, header) {
+          /// print(value);
+          /// print(header);
+        },
+        onSubmittedRow: (value, header) {
+          /// print(value);
+          /// print(header);
+        },
+        onTabRow: (value) {
+          print("one tab row === $value");
+          // setState(() {
+          //   isTabSingleTabb = true;
+          // });
+          // if (_selecteds.indexOf(value)!=true) {
+          //   setState((){ isTabSingleTabb = false;  _selecteds.add(value);  });
+          // } else {
+          //   setState(
+          //           (){isTabSingleTabb = true; _selecteds.removeAt(_selecteds.indexOf(value)); });
+          // }
+        },
+        onSort: (value) {
+
+          setState(() => _isLoading = true);
+
+          setState(() {
+            _sortColumn = value;
+            _sortAscending = !_sortAscending;
+            if (_sortAscending) {
+              _sourceFiltered.sort((a, b) =>
+                  b["$_sortColumn"].compareTo(a["$_sortColumn"]));
+            } else {
+              _sourceFiltered.sort((a, b) =>
+                  a["$_sortColumn"].compareTo(b["$_sortColumn"]));
+            }
+            var _rangeTop = _currentPerPage! < _sourceFiltered.length
+                ? _currentPerPage!
+                : _sourceFiltered.length;
+            _source = _sourceFiltered.getRange(0, _rangeTop).toList();
+            _searchKey = value;
+
+            _isLoading = false;
+          });
+        },
+        expanded: _expanded,
+        sortAscending: _sortAscending,
+        sortColumn: _sortColumn,
+        isLoading: _isLoading,
+        onSelect: (value, item) {
+          print(" value   $value  $item ");
+          if (value!) {
+            setState((){
+              _selecteds.add(item);
+            });
+          } else {
+            setState(
+                    (){
+                  _selecteds.removeAt(_selecteds.indexOf(item));
+                });
+
+          }
+        },
+        onSelectAll: (value) {
+          if (value!) {
+            setState(() => _selecteds = _source.map((entry) => entry).toList().cast());
+
+          } else {
+            setState(() => _selecteds.clear());
+          }
+        },
+        footers: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 15),
+            child: const Text("Rows per page:"),
+          ),
+          if (_perPages.isNotEmpty)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 15),
+              child: DropdownButton<int>(
+                value: _currentPerPage,
+                items: _perPages
+                    .map((e) => DropdownMenuItem<int>(
+                  child: Text("$e"),
+                  value: e,
+                ))
+                    .toList(),
+                onChanged: (dynamic value) {
+                  setState(() {
+                    _currentPerPage = value;
+                    _currentPage = 1;
+                    _resetData();
+                  });
+                },
+                isExpanded: false,
+              ),
+            ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 15),
+            child:
+            Text("$_currentPage - $_currentPerPage of $_total"),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
+              size: 16,
+            ),
+            onPressed: _currentPage == 1
+                ? null
+                : () {
+              var _nextSet = _currentPage - _currentPerPage!;
+              setState(() {
+                _currentPage = _nextSet > 1 ? _nextSet : 1;
+                _resetData(start: _currentPage - 1);
+              });
+            },
+            padding: EdgeInsets.symmetric(horizontal: 15),
+          ),
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: 16),
+            onPressed: _currentPage + _currentPerPage! - 1 > _total
+                ? null
+                : () {
+              var _nextSet = _currentPage + _currentPerPage!;
+
+              setState(() {
+                _currentPage = _nextSet < _total
+                    ? _nextSet
+                    : _total - _currentPerPage!;
+                _resetData(start: _nextSet - 1);
+              });
+            },
+            padding: EdgeInsets.symmetric(horizontal: 15),
+          )
         ],
       ),
     );

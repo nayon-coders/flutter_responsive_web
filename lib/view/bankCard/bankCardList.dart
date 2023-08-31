@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:rakibproject1/Models/cardModels.dart';
 import 'package:rakibproject1/utility/appConfig.dart';
+import 'package:rakibproject1/view/home/dashboard.dart';
 import 'package:responsive_table/responsive_table.dart';
 
 import '../../Models/cardBuySuccessModel.dart';
@@ -282,6 +283,7 @@ Future ? getcardtFuture;
         backgroundColor: Colors.green,
       ));
       Navigator.pop(context);
+      Navigator.push(context, MaterialPageRoute(builder: (context)=>DashBoard(pageIndex: 8,)));
 
       return CardByeSuccessModel.fromJson(jsonDecode(res.body));
     }else{

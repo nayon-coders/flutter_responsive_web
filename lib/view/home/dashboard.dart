@@ -12,6 +12,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../../Models/balanceModel.dart';
 import '../balance/balanceRequest.dart';
+import '../purchasesList/purchasesList.dart';
 
 class DashBoard extends StatefulWidget {
   final int pageIndex;
@@ -38,6 +39,7 @@ class _DashBoardState extends State<DashBoard> {
 
     //
     AddBalance(),//6
+    PurchasesList(),//7
 
   ] ;
 
