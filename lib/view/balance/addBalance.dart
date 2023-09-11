@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:rakibproject1/controller/apiController.dart';
 import 'package:rakibproject1/utility/appConfig.dart';
+import 'package:rakibproject1/view/balance/balanceRequest.dart';
 import 'package:rakibproject1/view/home/dashboard.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddBalance extends StatefulWidget {
   const AddBalance({Key? key}) : super(key: key);
@@ -123,7 +125,7 @@ class _AddBalanceState extends State<AddBalance> {
                       SizedBox(height: 30,),
                       InkWell(
                         onTap: (){
-                          createPayment();
+                          isLoading?null: makePayment();
 
                         },
                         child: Container(
@@ -133,7 +135,7 @@ class _AddBalanceState extends State<AddBalance> {
                             color: Colors.black,
                             borderRadius: BorderRadius.circular(5)
                           ),
-                          child: isDataSubmit
+                          child: isLoading
                               ? Center(
                             child: Text("Loading...",
                               style: TextStyle(
@@ -180,51 +182,61 @@ class _AddBalanceState extends State<AddBalance> {
     );
   }
 
+
+
   bool isDataEmpty = false;
   bool isDataSubmit = false;
-  createPayment() async{
-    setState(() =>isDataSubmit = true);
-    if(selectedPaymentOption != null && amount.text.isNotEmpty){
-      print("selectedPaymentOption   === $selectedPaymentOption");
-      var res = await http.post(Uri.parse(AppConfig.PAYMENT_REQUEST),
-        body: jsonEncode({
-          "method" : "bitcoin",
-          "amount" : amount.text
+  bool isLoading = false;
+  Future<void> makePayment() async {
+    SharedPreferences _prefs = await SharedPreferences.getInstance();
+    var userName = _prefs.getString("userName");
+    var userId = _prefs.getString("userId");
+    var token = _prefs.getString("token");
+    setState(() =>isLoading = true);
+    var headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-CC-Version': '2018-03-22',
+      'X-CC-Api-Key': '41ec03d8-e159-4743-a3a4-331d98bcb93b'
+    };
+    var request =await http.post(Uri.parse(AppConfig.COINBASE),
+        body: json.encode({
+          "name": "Rakib",
+          "description": "Pay \$50 as a registration fee throw by Bitcoin. Without pay you can not make and account.",
+          "pricing_type" : "fixed_price",
+          "local_price": {
+            "currency": "USDT",
+            "amount" : amount.text,
+          },
+          "metadata": {
+            "customer_id": "${userId}",
+            "customer_name": "${userName}"
+          },
+          "redirect_url": "${AppConfig.DOMAIN}/storedata/user?amount='${double.parse("${amount.text}")}'&userId='${int.parse("$userId")}'",
+          "cancel_url": "${AppConfig.DOMAIN}",
         }),
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          'Content-Type': 'application/json',
-          'Accept': '*/*',
-          "BIDENAUTH": AppConfig.API_KEY, // whatever headers you need(I add auth)
-          "content-type": "application/json" // Specify content-type as JSON to prevent empty response body
-        },
-      );
-      print("object === ${res.statusCode}");
-      print("object === ${res.body}");
-      if(res.statusCode == 200){
-        if(jsonDecode(res.body)["code"] == 5){
-          Navigator.push(context, MaterialPageRoute(builder: (context)=>DashBoard(pageIndex: 7, amount: double.parse("${amount.text}"),)));
-        }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("${jsonDecode(res.body)["msg"]}"),
-          duration: const Duration(milliseconds: 1500),
-          backgroundColor: Colors.green,
-        ));
-      }else{
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("${jsonDecode(res.body)["detail"]}"),
-          duration: Duration(milliseconds: 1500),
-          backgroundColor: Colors.red,
-        ));
-      }
-    }else{
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Select Payment method and Amount"),
-        duration: Duration(milliseconds: 3000),
-        backgroundColor: Colors.red,
-      ));
+        headers: headers
+    );
+
+
+
+    var data = jsonDecode(request.body)["data"];
+
+    if (request.statusCode == 201) {
+      Navigator.push(context, MaterialPageRoute(builder: (context)=>BalanceRequest(
+        bitcoinWalletID: "${data["addresses"]["bitcoin"]}",
+        bitCoinAmount:"${ data["pricing"]["bitcoin"]["amount"]}",
+        usdAmount: "${data["pricing"]["local"]["amount"]}",
+        successURL: "${data["redirect_url"]}",
+        errorURL: "${data['cancel_url']}",
+      )),);
+      print("this is payment success === ");
     }
-    setState(() =>isDataSubmit = false);
+    else {
+      print("this is payment error ==== ${request.reasonPhrase}");
+    }
+
+    setState(() =>isLoading = false);
 
   }
 

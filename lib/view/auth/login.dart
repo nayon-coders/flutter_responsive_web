@@ -1,9 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'package:rakibproject1/responsive/responsive.dart';
 import 'package:rakibproject1/utility/colors.dart';
 import 'package:rakibproject1/view/auth/signup.dart';
 import 'package:rakibproject1/view/home/dashboard.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:rakibproject1/viewController/loading.dart';
+import '../../controller/sharedPrefarance.dart';
 import '../../utility/appConfig.dart';
 
 class Login extends StatefulWidget {
@@ -17,6 +22,12 @@ class _LoginState extends State<Login> {
 
   final email = TextEditingController();
   final pass = TextEditingController();
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +71,20 @@ class _LoginState extends State<Login> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                showError ? Container(
+                   padding: EdgeInsets.all(10),
+                   margin: EdgeInsets.only(top: 20),
+                   decoration: BoxDecoration(
+                     color: Colors.red.shade50,
+                     borderRadius: BorderRadius.circular(10)
+                   ),
+                   child:  Text(" $errorText ",
+                    style: TextStyle(
+                      color: Colors.red
+                    ),
+                   ),
+                 ):SizedBox(),
+
                   SizedBox(height: 30,),
                   TextFormField(
                     controller: email,
@@ -96,7 +121,7 @@ class _LoginState extends State<Login> {
                   ),
                   SizedBox(height: 30,),
                   InkWell(
-                    onTap: ()=>Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context)=>DashBoard()), (route) => false),
+                    onTap: ()=>_login(),
                     child: Container(
                       width: Responsive.isMobile(context)? size.width*.60 : size.width*.40,
                       height: 50,
@@ -104,7 +129,8 @@ class _LoginState extends State<Login> {
                         color: AppColors.black,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Center(child: Text("Login",
+                      child: Center(
+                          child: isLoading ? CircularProgressIndicator(strokeWidth: 1, color: Colors.white,) : Text("Login",
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: AppColors.white
@@ -121,5 +147,45 @@ class _LoginState extends State<Login> {
         ],
       ),
     );
+  }
+
+  bool showError = false;
+  String? errorText = "";
+  bool isLoading = false;
+  _login() async{
+    setState(() {
+      isLoading = true;
+    });
+    var res = await http.post(Uri.parse(AppConfig.LOGIN),
+      body: {
+        "user_name" : email.text,
+        "password" : pass.text
+      }
+    );
+    print("login data ==== ${res.statusCode}");
+    print("login data ==== ${res.body}");
+    if(res.statusCode == 200){
+      if(jsonDecode(res.body)["data"]["user"]["status"] == "1"){
+        isLoading = false;
+        SaveData.storeAuthData(jsonDecode(res.body));
+        var sessionManager = SessionManager();
+        await sessionManager.set("token", jsonDecode(res.body)["data"]["bearer_token"]);
+        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context)=>DashBoard()), (route) => false);
+      }else{
+        setState(() {
+          isLoading = false;
+          showError = true;
+          errorText = "Account is not active. Wait until admin approval or contact with admin.";
+        });
+      }
+
+    }else{
+      setState(() {
+        showError = true;
+        isLoading = false;
+        errorText = "User name/Password is increase";
+
+      });
+    }
   }
 }

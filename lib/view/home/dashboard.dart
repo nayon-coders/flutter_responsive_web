@@ -1,5 +1,6 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
+import 'package:rakibproject1/Models/adminModel.dart';
 import 'package:rakibproject1/controller/apiController.dart';
 import 'package:rakibproject1/utility/appConfig.dart';
 import 'package:rakibproject1/utility/colors.dart';
@@ -13,6 +14,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../Models/balanceModel.dart';
 import '../balance/balanceRequest.dart';
 import '../purchasesList/purchasesList.dart';
+import '../roulse.dart';
 
 class DashBoard extends StatefulWidget {
   final int pageIndex;
@@ -25,7 +27,8 @@ class DashBoard extends StatefulWidget {
 
 class _DashBoardState extends State<DashBoard> {
   final PageController _pageController = PageController();
-  Future<BalanceModel>? _getBalance;
+  Future? _getBalance;
+  Future<AdminModel>? _adminModel;
   double? amount;
 
   int currentPage = 0;
@@ -33,7 +36,7 @@ class _DashBoardState extends State<DashBoard> {
     BankCardList(),
     HotBankCardList(),
     CheapBankCardList(),
-    Setting(),
+    Rulse(),
     Setting(),
     Setting(),
 
@@ -52,15 +55,14 @@ class _DashBoardState extends State<DashBoard> {
   String? selectedDropdown;
 
 
-
 @override
   void initState() {
     // TODO: implement initState
     super.initState();
     amount = widget.amount;
-    pages.insert(7, BalanceRequest(amount: widget.amount,));
     currentPage = widget.pageIndex;
-    _getBalance = ApiController.getBalance();
+    _getBalance = ApiController.gerSingleUser();
+    _adminModel = ApiController.getAdminData();
   }
 
   @override
@@ -91,7 +93,7 @@ class _DashBoardState extends State<DashBoard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                   FutureBuilder<BalanceModel>(
+                   FutureBuilder(
                       future: _getBalance,
                       builder: (context, snapshot) {
                        if(snapshot.connectionState == ConnectionState.waiting){
@@ -119,23 +121,17 @@ class _DashBoardState extends State<DashBoard> {
                                              color: Colors.white
                                          )
                                      ),
-                                     TextSpan(text: "${snapshot.data?.balanceInUsd} | ",
+                                     TextSpan(text: "${double.parse("${snapshot.data["data"]["user"]["balance"]}").toStringAsFixed(2)}",
                                          style: TextStyle(
                                              fontSize: 14,
                                              fontWeight: FontWeight.w400,
                                              color: Colors.purple
                                          )
                                      ),
-                                     TextSpan(text: "(${snapshot.data?.balanceInBtc})",
-                                         style: TextStyle(
-                                             fontSize: 14,
-                                             fontWeight: FontWeight.w400,
-                                             color: Colors.amber
-                                         )
-                                     ),
+
                                    ]
                                )),
-                               Icon(Icons.currency_bitcoin, color: Colors.amber,size: 10,),
+                               Icon(Icons.attach_money, color: Colors.amber,size: 17,),
                                IconButton(onPressed: (){
                                  setState(() {
                                    currentPage = 6;
@@ -229,7 +225,7 @@ class _DashBoardState extends State<DashBoard> {
                         child: InkWell(
                             onTap: (){
                               setState(() {
-                                currentPage = 3;
+                                currentPage = 7;
                               });
                               print( "currentPage === ${currentPage}");
                             },
@@ -245,7 +241,7 @@ class _DashBoardState extends State<DashBoard> {
                         child: InkWell(
                             onTap: (){
                               setState(() {
-                                currentPage = 4;
+                                currentPage = 3;
                               });
                             },
                             child: const Text("Rules",
