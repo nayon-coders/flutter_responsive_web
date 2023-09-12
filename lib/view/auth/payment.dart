@@ -117,7 +117,7 @@ class _RegistrationFeeState extends State<RegistrationFee> {
     SharedPreferences _prefs = await SharedPreferences.getInstance();
     var userName = _prefs.getString("userName");
     var userId = _prefs.getString("userId");
-    var token = _prefs.getString("token");
+    print("widget.userInfo ${widget.userInfo}");
     setState(() =>isLoading = true);
     var headers = {
       'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ class _RegistrationFeeState extends State<RegistrationFee> {
           "customer_name": "${widget.userInfo["userName"]}"
         },
         "redirect_url": "${AppConfig.DOMAIN}/storedata/user?status=${int.parse("1")}&userId='${int.parse("${userId}")}",
-        "cancel_url": "${AppConfig.DOMAIN}",
+        "cancel_url": AppConfig.DOMAIN,
       }),
       headers: headers
     );
@@ -147,6 +147,8 @@ class _RegistrationFeeState extends State<RegistrationFee> {
 
 
     var data = jsonDecode(request.body)["data"];
+    print("data===== $data");
+    print("data===== ${request.statusCode}");
 
     if (request.statusCode == 201) {
       Navigator.push(context, MaterialPageRoute(builder: (context)=>DoPayment(

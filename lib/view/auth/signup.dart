@@ -9,6 +9,7 @@ import 'package:rakibproject1/utility/colors.dart';
 import 'package:rakibproject1/view/auth/login.dart';
 import 'package:http/http.dart' as http;
 import 'package:rakibproject1/view/auth/payment.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../home/dashboard.dart';
 
 class Signup extends StatefulWidget {
@@ -186,6 +187,7 @@ class _SignupState extends State<Signup> {
   bool isLoading = false;
 
   _signUp() async{
+    SharedPreferences _pref = await SharedPreferences.getInstance();
     setState(() {
       isLoading = true;
     });
@@ -216,13 +218,12 @@ class _SignupState extends State<Signup> {
     print("state ==== ${res.body}");
     if(res.statusCode == 200){
       isLoading = false;
-      SaveData.storeAuthData(jsonDecode(res.body));
+      //SaveData.storeAuthData(jsonDecode(res.body));
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context)=>RegistrationFee(userInfo: userInfo)), (route) => false);
     }else{
       setState(() {
         showError = true;
         isLoading = false;
-
       });
     }
   }

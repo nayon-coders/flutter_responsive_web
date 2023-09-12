@@ -298,7 +298,7 @@ Future ? getcardtFuture;
                             isLoading = true;
                             filterCard.clear();
                             for (var map in CardListJson.bankCard) {
-                              if (map!["zip"] == zip.text || map!["hidden_cc"] == bin.text || map!["city"] == city.text || map!["zip"] == zip.text || map!["state"] == state.text || map!["country"] == country.text) {
+                              if (map!["zip"] == zip.text || map!["hidden_cc"].toString().contains(bin.text) || map!["city"] == city.text || map!["zip"] == zip.text || map!["state"] == state.text || map!["country"] == country.text) {
                                 filterCard.add(map);
                                 print("CardListJson.bankCard[index] === ${filterCard}");
                                 // your list of map contains key "id" which has value 3
